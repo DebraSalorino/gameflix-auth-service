@@ -134,7 +134,7 @@ The 12 tests in `src/test/java/com/gameflix/auth/AuthApiTests.java`, mapped to t
 
 After case 3, `demo.sh` prints the full token on its own line under `=== Access token (paste into jwt.io for the next assignment) ===`, for use in the next assignment.
 
-**Screenshots:** TODO (Debra): add the location of the test-run, demo and `SELECT id, email, password FROM users;` screenshots.
+**Screenshots:** in the Word document submitted with this assignment in Canvas (test run, demo.sh output, and the `SELECT id, email, password FROM users;` result).
 
 ## 9. Module 3 design-change note
 
@@ -149,4 +149,21 @@ Differences from the Module 3 ERD's `auth.account` table:
 
 ## 10. AI use
 
-> **TODO (Debra): write this section yourself.** Cover: the tool (Claude Code; Claude Opus 5.5 and Claude Fable 5.1 for the spec and guide), where it was used, and one thing it produced that you changed or rejected, and why. See [PROMPT_JOURNAL.md](PROMPT_JOURNAL.md) for the prompt-by-prompt record.
+I used Claude Opus 5.5 and Claude Fable 5.1 in the claude.ai app to iterate on the assignment and design. The sprint plan was converted into a SPEC.md file and audited multiple times. Most changes were made to encourage simplicity in the code and accommodate my need to understand and explain the implementation details. To accomplish this, it was decided that every class and every method will have a Javadoc block explaining what it does and which requirements it satisfied. Each step inside a method has an included "why" comment above it. Unfamiliar annotations are explained and every line of the security config has its own comment. Security decisions are to be tagged // SECURITY: so that they can be easily located. Each test has an included explanation indicating which required case it proves and what response it expects. 
+
+A final audit pass on the SPEC.md file using the Fable model identified several elements that might have broken the build or tests. Corrections were made to avoid the identified issues: 
+1. The spec originally said save the user, catch the database's duplicate error inside the service and turn it into a 409. If a method is marked @Transactional and a database error happens inside it, Spring marks the whole transaction as "must roll back" even if the code catches the error. When the method ends, Spring tries to commit, finds the rollback flag, and throws UnexpectedRollbackException, resulting in a 500 instead of a 409. The correction was to leave @Transactional off the AuthService entirely. Spring Data's saveAndFlush already runs inside its own transaction, which rolls back cleanly on failure. The exception then travels up to GlobalExceptionHandler, which turns it into the 409. The code is simpler and still works. 
+2. The spec named NimbusJwtEncoder but didn't say how to build it. The class takes "key source" object instead of a raw key, and there's a specific wrapper for a single HMAC secret. Claude Code was initially left to guess, which would have failed at runtime instead of runtime. A modification was made to spell out the exact construction and Claude Code later confirmed it against the actual library before writing the code. 
+3. The spec had gamefclix.jwt.ttl=15m. Spring can parse "15m" into a Duration, but only through one of its configuration mechanisms; reading it with the simpler @Value annotation risks failure. Rather than add the heavier mechanism, I changed the property to ....ttl-seconds=900. 
+4. The assignment directs me to commit the schema as documentation but SpringBoot treats a file name schema.sql inside /resources as a script to run at startup. If Claude Code put it there, the app might have tried to create a table that Hibernate was also creating. The fix was to require the file in the project rot, outside Spring's reach. 
+5. The spec listed @Email as the email rule. @Email only checks format; it treats an empty string as valid, because there's no format to fail. "Email": "" would have passed validation and hit the database as a blank email. @NotBlank was added as a requirement to prevent that from happening. 
+6. Tests needed a database password and a JWT secret. Per the assignment, committing and secret loses externalization points. The correction made was to have the test profile inherit the three values from the same git-ignored local file the app uses, and the spec was modified to explicitly direct Claude Code to never commit one to the repo. 
+7. I had written VARCHAR(20) for the role column. Hibernate maps a string-stored enum to a native MySQL column instead. The schema committed shows that. Had the spec insisted on VARCHAR, Claude Code would have added extra annotations to fight the default, and the schema in the README would have had to match. 
+
+Last minute additions made to the SPEC.md:
+1. A note requirement if Spring Security generates a security password. 
+2. The token printed by demo.sh because the next assignment needs a token and I wanted to save that step later. 
+3. A traceability table to map each assignment requirement to a spec section so that I (and you) can confirm all requirements have been covered in execution. 
+
+After generation, I walked through the code class by class with Claude Code. When someone registers, someone logs in, or someone calls GET /api/users/me with a token. I documented the file name and method for each step. Potential changes were also documented for review and consideration. I also worked through the documentation to make sure it was all understandable. These comments were improved for readability with assistance from Claude Code (and noted as AI-assisted. Changes were then pushed. 
+

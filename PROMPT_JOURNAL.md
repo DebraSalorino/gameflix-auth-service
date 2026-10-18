@@ -27,7 +27,7 @@ One entry per prompt given to the AI tool while building this project. All entri
 - `src/test/resources/application-test.properties` (`auth_test` URL, `create-drop`, no secrets).
 - Ran `git init`; reported the 11 dependencies in `pom.xml` (5 compile, MySQL driver at runtime, 5 test starters).
 
-**What Debra changed and why:** TODO
+What Debra changed and why: Read the report, checked it against SPEC.md and accepted it. 
 
 ---
 
@@ -47,7 +47,7 @@ One entry per prompt given to the AI tool while building this project. All entri
 - Reported its choices where the spec was silent: two error-body records, a separate `SecretKey` bean, `findUserById` in `AuthService`, `role` as a String in `UserResponse`.
 - Flagged two follow-ups: confirm the malformed-JSON exception type in test 3, and the `createdAt` precision difference between register and `/me`.
 
-**What Debra changed and why:** TODO
+What Debra changed and why: Read the report, checked it against SPEC.md and accepted it. 
 
 ---
 
@@ -71,7 +71,7 @@ One entry per prompt given to the AI tool while building this project. All entri
 - `./mvnw test`: **12 run, 0 failures, 0 errors**, so no application code or test expectations were changed.
 - Reported JDK 26 warnings (ByteBuddy/Mockito dynamic agent loading; not errors) and that Hibernate logged the duplicate email at WARN, with a suggested one-line fix that it did not apply without approval.
 
-**What Debra changed and why:** TODO
+What Debra changed and why: Read the report, checked it against SPEC.md and accepted it. 
 
 ---
 
@@ -88,7 +88,7 @@ One entry per prompt given to the AI tool while building this project. All entri
 - Added `logging.level.org.hibernate.orm.jdbc.error=ERROR` to `src/main/resources/application.properties`, with a `SECURITY:` comment explaining that Hibernate's WARN message contains the submitted email.
 - Reran `./mvnw test`: 12/12 pass, and the log no longer contains any "Duplicate entry" line. Noted the trade-off: other WARN-level SQL messages from that logger are hidden too.
 
-**What Debra changed and why:** TODO
+What Debra changed and why: Claude Code flagged the email in the log and explained the tradeoff. I made the decision to hide the duplicate entry from the log. 
 
 ---
 
@@ -109,7 +109,7 @@ One entry per prompt given to the AI tool while building this project. All entri
 - `schema.sql` with the `CREATE TABLE users` statement from the real `auth` database; confirmed `` `password` varchar(255) NOT NULL `` and `` UNIQUE KEY `uk_users_email` (`email`) ``.
 - Stopped the app (port 8080 free). Noted that the "Using generated security password" line did not appear in this run's log.
 
-**What Debra changed and why:** TODO
+What Debra changed and why: Read the report, checked it against SPEC.md and accepted it.
 
 ---
 
@@ -126,4 +126,4 @@ One entry per prompt given to the AI tool while building this project. All entri
 - `README.md` with the ten SPEC section 8 sections, the real `SHOW CREATE TABLE` output, the 12 real test names mapped to the six required cases, a summary of the `demo.sh` run, and the JDK 26 / Java 21 target note. The AI-use section and the screenshot location are marked TODO.
 - This file, `PROMPT_JOURNAL.md`.
 
-**What Debra changed and why:** TODO
+What Debra changed and why: Read the report, checked it against SPEC.md and accepted it.
