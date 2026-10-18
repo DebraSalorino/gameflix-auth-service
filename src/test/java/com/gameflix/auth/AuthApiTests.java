@@ -101,6 +101,9 @@ class AuthApiTests {
      * Sends POST /api/auth/register with a valid username, email and password.
      * Expects 201 and the user JSON (id, username, email, role USER, createdAt) with no password field.
      */
+    // @Test: JUnit runs this method as one test. "throws Exception": MockMvc's methods can throw
+    // checked exceptions; letting them escape simply makes the test fail with the error shown.
+    // jsonPath("$.id"): "$" is the top of the JSON response body, so "$.id" is its "id" field.
     @Test
     void register_success_returns201_withoutPassword() throws Exception {
         mockMvc.perform(post("/api/auth/register")
@@ -189,6 +192,7 @@ class AuthApiTests {
                 .andExpect(jsonPath("$.expiresIn").value(900))
                 .andReturn();
 
+        // JsonPath.read pulls one field out of the JSON text: here the "accessToken" value.
         String token = JsonPath.read(loginResult.getResponse().getContentAsString(), "$.accessToken");
 
         // decode() throws if the signature is wrong, so reaching the next line proves the token is signed by us.

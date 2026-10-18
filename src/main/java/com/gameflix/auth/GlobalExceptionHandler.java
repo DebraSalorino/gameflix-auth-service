@@ -68,7 +68,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDuplicate(DataIntegrityViolationException ex) {
-        // MySQL's own message (the most specific cause) looks like:
+        // Exceptions get wrapped as they travel up: MySQL's error is wrapped by Hibernate's,
+        // which is wrapped by Spring's. getMostSpecificCause() unwraps to the innermost one,
+        // MySQL's own error, whose message looks like:
         //   Duplicate entry 'debra@example.com' for key 'users.uk_users_email'
         // We look only for the constraint name in it and never send the message itself,
         // because it contains the submitted value and internal table names.

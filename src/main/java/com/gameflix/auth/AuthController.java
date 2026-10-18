@@ -48,6 +48,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
         UserResponse createdUser = authService.register(request);
+        // ResponseEntity: the whole HTTP response (status code + body). Spring writes the body as JSON.
         // 201 (not 200) because a new resource was created.
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }

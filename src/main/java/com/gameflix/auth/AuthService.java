@@ -84,6 +84,8 @@ public class AuthService {
      */
     public TokenResponse login(LoginRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
+        // Optional: a box that either holds a User or is empty. It makes "no account with this
+        // email" an explicit case we must handle, instead of a null that could crash later.
         Optional<User> foundUser = userRepository.findByEmail(normalizedEmail);
 
         // SECURITY: run exactly one bcrypt check whether or not the email exists. If we returned
@@ -94,6 +96,7 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
+        // get() takes the User out of the box; safe here because we just checked it is not empty.
         User user = foundUser.get();
         boolean passwordMatches = passwordEncoder.matches(request.password(), user.getPassword());
         if (!passwordMatches) {

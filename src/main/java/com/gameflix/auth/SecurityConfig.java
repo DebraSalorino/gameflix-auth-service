@@ -62,6 +62,10 @@ public class SecurityConfig {
     // @Bean: the object this method returns is created once and managed by Spring.
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // How to read the lines below: each setting takes a lambda, a tiny unnamed function.
+        // "csrf -> csrf.disable()" means "Spring hands us the CSRF settings (named csrf here),
+        // and we call disable() on them". The name before the arrow is just a label we choose.
+        // Customizer.withDefaults() means "turn this feature on with Spring's standard settings".
         http
                 // SECURITY: CSRF (Cross-Site Request Forgery) protection is off. CSRF tricks a
                 // browser into sending a cookie it holds automatically. This API is stateless and
@@ -147,7 +151,9 @@ public class SecurityConfig {
      */
     @Bean
     public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
-        // ImmutableSecret hands the one secret key to Nimbus, the JWT library built into Spring Security.
+        // Nimbus (the JWT library built into Spring Security) asks for a "key source": a place it
+        // can look up signing keys. ImmutableSecret is the simplest kind: it always returns our one
+        // secret key and can never change. The empty <> lets Java work out the type parameter itself.
         return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSecretKey));
     }
 

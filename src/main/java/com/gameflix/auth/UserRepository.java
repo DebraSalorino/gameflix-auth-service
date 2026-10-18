@@ -15,6 +15,8 @@ import java.util.Optional;
  * <p>Satisfies SPEC.md section 3 ("UserRepository extends JpaRepository&lt;User, Long&gt; with
  * findByEmail").
  */
+// JpaRepository<User, Long>: "a repository of User objects whose id (primary key) is a Long".
+// Extending it gives us save, find, delete and count methods without writing any SQL.
 public interface UserRepository extends JpaRepository<User, Long> {
 
     /**

@@ -51,6 +51,8 @@ public class TokenService {
 
         // SECURITY: only these five claims. The payload is Base64URL-encoded, not encrypted, so
         // anyone holding the token can read it: no email, username or password goes in here.
+        // builder() starts an empty claim set, each line below adds one claim, and build()
+        // finishes it. (Spring Security's API requires this "builder" style for claims.)
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("gameflix-auth")
                 .subject(String.valueOf(user.getId()))

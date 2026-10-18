@@ -24,6 +24,8 @@ import jakarta.validation.constraints.Size;
  */
 public record RegisterRequest(
         // @NotBlank: must be present and not just spaces. @Pattern: must match the regular expression.
+        // Reading the pattern: ^ start, [A-Za-z0-9] one letter or digit, [A-Za-z0-9_-]{2,29}
+        // then 2 to 29 more letters, digits, underscores or hyphens, $ end. Total: 3 to 30 characters.
         @NotBlank
         @Pattern(regexp = "^[A-Za-z0-9][A-Za-z0-9_-]{2,29}$")
         String username,
