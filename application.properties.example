@@ -1,0 +1,18 @@
+# =====================================================================
+# Template for local secrets (SPEC.md section 5).
+# Copy this file to application-local.properties in the project root:
+#     cp application.properties.example application-local.properties
+# then replace the placeholder values. application-local.properties is
+# git-ignored, so your real values are never committed.
+# The remaining settings live in src/main/resources/application.properties.
+# =====================================================================
+
+# MySQL user the app logs in as (must have access to the auth and auth_test databases).
+MYSQL_USER=gameflix_auth
+
+# Password for that MySQL user.
+MYSQL_PASSWORD=change-me
+
+# JWT signing secret: a Base64 string that decodes to at least 32 bytes.
+# Generate one with:  openssl rand -base64 32
+JWT_SECRET=paste-output-of-openssl-rand-base64-32
