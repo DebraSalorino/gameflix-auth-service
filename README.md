@@ -1,6 +1,6 @@
 # GameFlix Auth Service
 
-HCDD 412 · Module 4: Login & Registration Endpoints · Debra Salorino
+HCDD 412 · Module 4: Login & Registration Endpoints · Module 5: Docker & CI · Debra Salorino
 
 ## 1. Overview
 
@@ -167,3 +167,54 @@ Last minute additions made to the SPEC.md:
 
 After generation, I walked through the code class by class with Claude Code. When someone registers, someone logs in, or someone calls GET /api/users/me with a token. I documented the file name and method for each step. Potential changes were also documented for review and consideration. I also worked through the documentation to make sure it was all understandable. These comments were improved for readability with assistance from Claude Code (and noted as AI-assisted. Changes were then pushed. 
 
+
+## 11. Docker and CI (Module 5)
+
+The service and a MySQL 8.0 database run in two containers wired together by Docker Compose, and GitHub Actions builds and tests every push to `main`.
+
+### Files
+
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Packages the Maven-built JAR on a Java 21 runtime image (`eclipse-temurin:21-jre-alpine`), running as a non-root user. |
+| `.dockerignore` | Keeps `.git`, editor files, `.env` and `application-local.properties` out of the image build. `target/` stays in, because the Dockerfile copies the JAR from it. |
+| `compose.yaml` | Defines the `mysql` and `app` services, the private `app-net` network, the `mysql_data` volume, and a health check so the app starts only after MySQL is ready. |
+| `.env.example` | Template for `.env` (git-ignored), which holds the database passwords and the JWT secret for Compose. |
+| `.github/workflows/ci.yml` | The CI pipeline (see below). |
+
+### Run the stack with Docker
+
+Requires Docker Desktop (Compose v2 or later) and Java 21.
+
+```bash
+cp .env.example .env              # then edit: set both passwords, and paste the output of:
+openssl rand -base64 32           #   -> JWT_SECRET
+./mvnw clean package -DskipTests  # build target/*.jar (the Dockerfile copies it)
+docker compose config --quiet     # check the YAML and .env (prints nothing if valid)
+docker compose up --build -d      # build the image, start MySQL, wait until healthy, start the app
+docker compose ps                 # mysql should be "healthy", app "running"
+./demo.sh                         # the six required cases against http://localhost:8080
+docker compose exec mysql mysql -ugameflix_auth -p auth -e "SELECT id, email, password FROM users;"
+docker compose down               # stop (keeps data); "down -v" also deletes the database volume
+```
+
+`http://localhost:8080/` returns 404 because no endpoint is mapped to `/`; that is expected. The containerized MySQL is published on port **3307** so it doesn't clash with a local MySQL on 3306; they are separate databases.
+
+The only configuration differences from running locally are environment variables set in `compose.yaml`: `SPRING_DATASOURCE_URL` points at the `mysql` service instead of `localhost` (inside a container, `localhost` is the container itself), and `MYSQL_USER`, `MYSQL_PASSWORD` and `JWT_SECRET` come from `.env` instead of `application-local.properties`. No code changed.
+
+### CI pipeline (GitHub Actions)
+
+On every push or pull request to `main`, `.github/workflows/ci.yml`:
+
+1. starts a throwaway MySQL 8.0 **service container** with an empty `auth_test` database;
+2. checks out the code and sets up **Java 21** (the course template's Java 17 would not compile this project);
+3. generates a random, single-use JWT secret and masks it in the log, so no secret is committed;
+4. runs `./mvnw -B clean verify`, which runs all **12 tests against real MySQL** and packages the JAR (a failing test fails the run);
+5. uploads the test reports as a build artifact;
+6. builds the Docker image, tagged with the commit hash.
+
+Security choices, following the Module 5 lecture: the workflow token is read-only (`permissions: contents: read`); each action is pinned to a full commit hash with its release noted beside it; the image runs as a non-root user; no secret is written into the image or the repository. The MySQL password in `ci.yml` only protects the temporary CI database and is used nowhere else. The workflow passes `actionlint` and the Dockerfile passes `hadolint`.
+
+### Module 5 AI use
+
+_To be written by Debra._

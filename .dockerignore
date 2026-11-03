@@ -1,0 +1,21 @@
+# Files Docker must NOT send into the image build (the "build context").
+# Keeps the build fast and keeps secrets out of the image.
+
+# Git history and settings
+.git
+.gitignore
+.github
+
+# Editor and OS files
+.idea
+.vscode
+*.iml
+*.log
+.DS_Store
+
+# SECURITY: local secrets. Neither file may ever end up inside an image.
+.env
+application-local.properties
+
+# NOTE: target/ is deliberately NOT listed here. The Dockerfile copies the
+# JAR from target/, so Docker needs to see it (Git still ignores it).

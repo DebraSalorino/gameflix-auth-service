@@ -1,0 +1,76 @@
+# =====================================================================
+# Docker Compose file for the GameFlix Auth Service (Module 5: Dockerize).
+# Runs two containers on one private network:
+#   mysql - MySQL 8.0 database, with its data kept in a named volume
+#   app   - this Spring Boot service, started only after MySQL is healthy
+#
+# Every ${NAME} below is filled in from the .env file in this folder
+# (copy .env.example to .env first). .env is git-ignored.
+#
+# Start:  ./mvnw clean package -DskipTests && docker compose up --build -d
+# Stop:   docker compose down        (keeps the database)
+# Reset:  docker compose down -v     (DELETES the database volume)
+# =====================================================================
+
+services:
+  mysql:
+    # Official MySQL 8.0 image, the same major version used in Modules 3 and 4.
+    image: mysql:8.0
+    environment:
+      # These four are applied only the first time, when the volume is empty.
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # Creates the "auth" database the app expects.
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      # Creates a separate, non-root account with access to that database only.
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      # Mac port 3307 -> container port 3306. 3307 avoids a clash with the
+      # MySQL server already installed on the Mac, which uses 3306.
+      - "${MYSQL_HOST_PORT:-3307}:3306"
+    volumes:
+      # Named volume: the database files survive "docker compose down".
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-net
+    healthcheck:
+      # "Healthy" means MySQL answers a ping over TCP. $$ stops Compose from
+      # filling the variable in itself; the shell inside the container does it.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  app:
+    # Build the image from the Dockerfile in this folder.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      # Mac port 8080 -> container port 8080 (the app's server.port).
+      - "${APP_HOST_PORT:-8080}:8080"
+    environment:
+      # Overrides the localhost URL in application.properties. Inside Docker,
+      # "localhost" would mean the app container itself, so the app reaches the
+      # database by its Compose service name, "mysql", on MySQL's own port 3306.
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      # application.properties reads these three placeholders. Outside Docker
+      # they come from application-local.properties; here they come from .env.
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      # SECURITY: the app refuses to start without a JWT signing secret, and the
+      # secret is never baked into the image. It is passed in at start-up instead.
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      # Wait until the MySQL health check passes before starting Spring Boot.
+      mysql:
+        condition: service_healthy
+    networks:
+      - app-net
+
+volumes:
+  mysql_data:
+
+networks:
+  app-net:

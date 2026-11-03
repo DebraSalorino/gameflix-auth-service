@@ -40,3 +40,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Added for Module 5 (Docker) ###
+# Docker Compose secrets (database passwords, JWT secret). Never commit this file.
+.env

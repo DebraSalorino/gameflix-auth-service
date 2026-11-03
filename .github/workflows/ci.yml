@@ -1,0 +1,105 @@
+# =====================================================================
+# GitHub Actions CI pipeline for the GameFlix Auth Service
+# (Module 5: CI/CD or Local Deployment, Option 1).
+#
+# On every push or pull request to main, GitHub starts a fresh Ubuntu machine
+# (a "runner") and:
+#   1. starts a throwaway MySQL 8.0 container with an empty auth_test database
+#   2. checks out the code and installs Java 21
+#   3. creates a random, single-use JWT secret
+#   4. runs all 12 tests against that MySQL, then packages the JAR
+#   5. builds the Docker image from the Dockerfile
+# If any step fails, the run turns red and the later steps do not run.
+# =====================================================================
+
+name: Spring Boot CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# SECURITY: least privilege. The workflow only needs to read the code, so its
+# built-in GITHUB_TOKEN gets read access and nothing else.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Values every step can read. The tests' application.properties
+    # placeholders ${MYSQL_USER} and ${MYSQL_PASSWORD} are filled from these.
+    # SECURITY: this password only protects a MySQL container that exists for a
+    # few minutes on GitHub's machine and holds test data, so it is not a real
+    # secret. It is not used anywhere else.
+    env:
+      MYSQL_USER: gameflix_auth
+      MYSQL_PASSWORD: ci-only-throwaway-password
+
+    # A "service container": GitHub starts MySQL before the steps run and
+    # deletes it when the job ends. Port 3306 on the runner maps to it, so the
+    # test URL jdbc:mysql://localhost:3306/auth_test works unchanged.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-throwaway-root-password
+          MYSQL_DATABASE: auth_test
+          MYSQL_USER: gameflix_auth
+          MYSQL_PASSWORD: ci-only-throwaway-password
+        ports:
+          - 3306:3306
+        # Wait until MySQL answers before the job's steps start.
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-only-throwaway-root-password --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=30s
+
+    steps:
+      # SECURITY: each third-party action is pinned to an exact commit (the long
+      # hash), not just a tag, so a later change to the tag cannot change what
+      # runs here. The comment shows which release that commit is.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Java 21, because pom.xml compiles for Java 21 (the course template's
+      # Java 17 would fail). cache: maven reuses downloaded libraries between runs.
+      - name: Set up JDK 21
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: maven
+
+      # SECURITY: the app refuses to start without a JWT secret, and no secret is
+      # committed to the repository. This makes a new random one for this run only.
+      # ::add-mask:: tells GitHub to hide the value if it ever appears in the log.
+      - name: Generate a single-use JWT secret
+        run: |
+          JWT_SECRET="$(openssl rand -base64 32)"
+          echo "::add-mask::$JWT_SECRET"
+          echo "JWT_SECRET=$JWT_SECRET" >> "$GITHUB_ENV"
+
+      # "verify" compiles, runs the 12 tests against the MySQL service, and
+      # packages the executable JAR into target/. -B (batch mode) gives a
+      # cleaner log. Any failing test stops the pipeline here.
+      - name: Run tests and package with Maven
+        run: ./mvnw -B clean verify
+
+      # Keep the test reports so a failed run can be inspected afterwards.
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports
+          path: target/surefire-reports/
+          retention-days: 14
+
+      # Build the image from the Dockerfile, which copies the JAR made above.
+      # The tag is the commit hash, so each image can be traced to its commit.
+      - name: Build Docker image
+        run: docker build -t gameflix-backend:${{ github.sha }} .
